@@ -17,20 +17,19 @@ import sys
 from data_loader import DataLoader
 import numpy as np
 import os
+import pandas as pd
 
 class Pix2Pix():
     def __init__(self):
         # Input shape
         self.img_rows = 256
         self.img_cols = 256
-        self.channels = 3
+        self.channels = 1
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
         self.dataset_name = 'edges2handbags'
-        self.data_loader = DataLoader(dataset_name=self.dataset_name,
-                                      img_res=(self.img_rows, self.img_cols))
-
+        self.data_loader = DataLoader("datasets/calo_images_geant4.h5", "datasets/calo_images_delphes.h5", img_res=(self.img_rows, self.img_cols))
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.img_rows / 2**4)
@@ -152,7 +151,7 @@ class Pix2Pix():
 
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
-        fake = np.zeros((batch_size,) + self.disc_patch)
+        fake  = np.zeros((batch_size,) + self.disc_patch)
 
         for epoch in range(epochs):
             for batch_i, (imgs_A, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
@@ -197,7 +196,7 @@ class Pix2Pix():
         imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
         fake_A = self.generator.predict(imgs_B)
 
-        gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
+        gen_imgs = np.concatenate([np.squeeze(imgs_B, axis=-1), np.squeeze(fake_A, axis=-1), np.squeeze(imgs_A, axis=-1)])
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
@@ -218,4 +217,4 @@ class Pix2Pix():
 if __name__ == '__main__':
     strategy = tf.distribute.MirroredStrategy()
     gan = Pix2Pix()
-    gan.train(epochs=200, batch_size=1, sample_interval=200)
+    gan.train(epochs=200, batch_size=4, sample_interval=200)

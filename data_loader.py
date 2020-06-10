@@ -2,87 +2,73 @@ import scipy
 from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pandas as pd
+import random
 
 class DataLoader():
-    def __init__(self, dataset_name, img_res=(128, 128)):
-        self.dataset_name = dataset_name
+    def __init__(self, path_to_geant4_images_file, path_to_delphes_images_file, img_res=(128, 128)):
         self.img_res = img_res
 
+        self.geant4_images = pd.read_hdf(path_to_geant4_images_file).image
+        self.delphes_images = pd.read_hdf(path_to_delphes_images_file).image
+
     def load_data(self, batch_size=1, is_testing=False):
-        data_type = "train" if not is_testing else "test"
-        path = glob('./datasets/%s/%s/*' % (self.dataset_name, data_type))
 
-        batch_images = np.random.choice(path, size=batch_size)
+    	sample_images = random.sample(
+    	    list(zip(self.geant4_images, self.delphes_images)), batch_size)
 
-        imgs_A = []
-        imgs_B = []
+        imgs_geant4, imgs_delphes = [], []
 
-        for img_path in batch_images:
-            img = self.imread(img_path)
+        for img in sample_images:
+        	img_geant4  = scipy.misc.imresize(img[0], self.img_res)
+        	img_delphes = scipy.misc.imresize(img[1], self.img_res)
 
-            h, w, _ = img.shape
-            _w = int(w/2)
-            img_A, img_B =  img[:, :_w, :], img[:, _w:, :]
+        	# If training => do random flip
+        	if not is_testing and np.random.random() < 0.5:
+        		img_geant4 = np.fliplr(img_geant4)
+        		img_delphes = np.fliplr(img_delphes)
 
-            if(self.dataset_name!='facades'): 
-                #swap A nd B since the data has been prepares in that way
-                img_tmp = img_A
-                img_A = img_B
-                img_B = img_tmp
+        	imgs_geant4.append(img_geant4)
+        	imgs_delphes.append(img_delphes)
+        imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
+        imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
+        
+        imgs_geant4 = np.expand_dims(imgs_geant4, axis=-1)
+        imgs_delphes = np.expand_dims(imgs_delphes, axis=-1)
 
-            img_A = scipy.misc.imresize(img_A, self.img_res)
-            img_B = scipy.misc.imresize(img_B, self.img_res)
-
-            # If training => do random flip
-            if not is_testing and np.random.random() < 0.5:
-                img_A = np.fliplr(img_A)
-                img_B = np.fliplr(img_B)
-
-            imgs_A.append(img_A)
-            imgs_B.append(img_B)
-
-        imgs_A = np.array(imgs_A)/127.5 - 1.
-        imgs_B = np.array(imgs_B)/127.5 - 1.
-
-        return imgs_A, imgs_B
+        return imgs_geant4, imgs_delphes
 
     def load_batch(self, batch_size=1, is_testing=False):
-        data_type = "train" if not is_testing else "val"
-        path = glob('./datasets/%s/%s/*' % (self.dataset_name, data_type))
 
-        self.n_batches = int(len(path) / batch_size)
+        geant4_images  = self.geant4_images
+        delphes_images = self.delphes_images
+
+        self.n_batches = int(len(geant4_images) / batch_size)
 
         for i in range(self.n_batches-1):
-            batch = path[i*batch_size:(i+1)*batch_size]
-            imgs_A, imgs_B = [], []
+            batch = list(zip(geant4_images[i*batch_size:(i+1)*batch_size], delphes_images[i*batch_size:(i+1)*batch_size]))
+            
+            imgs_geant4, imgs_delphes = [], []
+
             for img in batch:
-                img = self.imread(img)
-                h, w, _ = img.shape
-                half_w = int(w/2)
-                img_A = img[:, :half_w, :]
-                img_B = img[:, half_w:, :]
 
-                if(self.dataset_name!='facades'): 
-                    #swap A nd B since the data has been prepares in that way
-                    img_tmp = img_A
-                    img_A = img_B
-                    img_B = img_tmp
-
-                img_A = scipy.misc.imresize(img_A, self.img_res)
-                img_B = scipy.misc.imresize(img_B, self.img_res)
+                img_geant4 = scipy.misc.imresize(img[0], self.img_res)
+                img_delphes = scipy.misc.imresize(img[1], self.img_res)
 
                 if not is_testing and np.random.random() > 0.5:
-                    img_A = np.fliplr(img_A)
-                    img_B = np.fliplr(img_B)
+                    img_geant4 = np.fliplr(img_geant4)
+                    img_delphes = np.fliplr(img_delphes)
 
-                imgs_A.append(img_A)
-                imgs_B.append(img_B)
+                imgs_geant4.append(img_geant4)
+                imgs_delphes.append(img_delphes)
 
-            imgs_A = np.array(imgs_A)/127.5 - 1.
-            imgs_B = np.array(imgs_B)/127.5 - 1.
+            imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
+            imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
 
-            yield imgs_A, imgs_B
+            imgs_geant4 = np.expand_dims(imgs_geant4, axis=-1)
+            imgs_delphes = np.expand_dims(imgs_delphes, axis=-1)
+
+            yield imgs_geant4, imgs_delphes
 
     def imread(self, path):
         return scipy.misc.imread(path, mode='RGB').astype(np.float)
