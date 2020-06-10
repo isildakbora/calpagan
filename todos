@@ -3,3 +3,4 @@ to-dos
 1.) energy normalization - BB
 2.) d-loss, d-acc, g-loss plot - ES
 3.) delphes images prep - BI
+4.) should we shuffle batches in the beginning of each epoch? OQ
