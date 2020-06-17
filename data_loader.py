@@ -30,8 +30,17 @@ class DataLoader():
 
         	imgs_geant4.append(img_geant4)
         	imgs_delphes.append(img_delphes)
-        imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
-        imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
+        
+        ### Standardize the images
+        imgs_geant4 = np.array(imgs_geant4)
+        imgs_geant4 = imgs_geant4/(np.max(imgs_geant4)/2) - 1
+       
+        imgs_delphes = np.array(imgs_delphes)
+        imgs_delphes = imgs_delphes/(np.max(imgs_delphes)/2) - 1
+        
+        #imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
+        #imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
+        
         
         imgs_geant4 = np.expand_dims(imgs_geant4, axis=-1)
         imgs_delphes = np.expand_dims(imgs_delphes, axis=-1)
@@ -62,8 +71,16 @@ class DataLoader():
                 imgs_geant4.append(img_geant4)
                 imgs_delphes.append(img_delphes)
 
-            imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
-            imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
+                
+            ### Standardize the images
+            imgs_geant4 = np.array(imgs_geant4)
+            imgs_geant4 = imgs_geant4/(np.max(imgs_geant4)/2) - 1
+       
+            imgs_delphes = np.array(imgs_delphes)
+            imgs_delphes = imgs_delphes/(np.max(imgs_delphes)/2) - 1
+            
+            #imgs_geant4 = np.array(imgs_geant4)/127.5 - 1.
+            #imgs_delphes = np.array(imgs_delphes)/127.5 - 1.
 
             imgs_geant4 = np.expand_dims(imgs_geant4, axis=-1)
             imgs_delphes = np.expand_dims(imgs_delphes, axis=-1)
