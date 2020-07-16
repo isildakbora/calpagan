@@ -19,6 +19,8 @@ import numpy as np
 import os
 import pandas as pd
 
+from PIL import Image
+
 class Pix2Pix():
     def __init__(self):
         # Input shape
@@ -29,7 +31,7 @@ class Pix2Pix():
 
         # Configure data loader
         self.dataset_name = 'edges2handbags'
-        self.data_loader = DataLoader("datasets/calo_images_geant4.h5", "datasets/calo_images_delphes.h5", img_res=(self.img_rows, self.img_cols))
+        self.data_loader = DataLoader("calo_images_geant4_dijet_10k.h5", "calo_images_delphes_dijet_10k.h5", img_res=(self.img_rows, self.img_cols))
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.img_rows / 2**4)
@@ -43,7 +45,7 @@ class Pix2Pix():
 
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
-        self.discriminator.compile(loss=keras.losses.mean_squared_error,
+        self.discriminator.compile(loss="mse",
             optimizer=optimizer,
             metrics=['accuracy'])
         self.discriminator.summary()
@@ -70,7 +72,7 @@ class Pix2Pix():
         valid = self.discriminator([fake_A, img_B])
 
         self.combined = Model(inputs=[img_A, img_B], outputs=[valid, fake_A])
-        self.combined.compile(loss=['mse', 'mae'],
+        self.combined.compile(loss=["mse", 'mae'],
                               loss_weights=[1, 100],
                               optimizer=optimizer)
 
@@ -191,23 +193,28 @@ class Pix2Pix():
 	if not os.path.exists('images/%s' % self.dataset_name):
 		os.makedirs('images/%s' % self.dataset_name)
         #os.makedirs('images/%s' % self.dataset_name)
-        r, c = 3, 3
+        r, c = 3, 4
 
-        imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
+        imgs_A, imgs_B = self.data_loader.load_data(batch_size=c, is_testing=True)
         fake_A = self.generator.predict(imgs_B)
 
         gen_imgs = np.concatenate([np.squeeze(imgs_B, axis=-1), np.squeeze(fake_A, axis=-1), np.squeeze(imgs_A, axis=-1)])
 
         # Rescale images 0 - 1
         gen_imgs = 0.5 * gen_imgs + 0.5
-
-        titles = ['Condition', 'Generated', 'Original']
+        shown_imgs = []
+        titles = ['Delphes', 'Generated', 'GEANT4']
         fig, axs = plt.subplots(r, c)
         cnt = 0
         for i in range(r):
             for j in range(c):
-                axs[i,j].imshow(gen_imgs[cnt])
-                axs[i, j].set_title(titles[i])
+                #img = Image.fromarray(gen_imgs[cnt]/np.sum(gen_imgs[cnt])).resize((32,32), Image.BICUBIC)
+                img = Image.fromarray(gen_imgs[cnt]).resize((32,32), Image.BICUBIC)
+
+                shown_imgs.append(np.array(img))
+                axs[i,j].imshow(shown_imgs[-1], cmap='jet')
+                #axs[i,j].imshow(gen_imgs[cnt])
+                axs[i, j].set_title(titles[i]+" E="+str(np.sum(shown_imgs[-1].flatten())), fontsize=5)
                 axs[i,j].axis('off')
                 cnt += 1
         fig.savefig("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
@@ -217,4 +224,4 @@ class Pix2Pix():
 if __name__ == '__main__':
     strategy = tf.distribute.MirroredStrategy()
     gan = Pix2Pix()
-    gan.train(epochs=200, batch_size=4, sample_interval=200)
+    gan.train(epochs=200, batch_size=1, sample_interval=100)
